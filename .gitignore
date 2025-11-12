@@ -1,0 +1,2 @@
+.env
+/pkg/database/ssl.pem
