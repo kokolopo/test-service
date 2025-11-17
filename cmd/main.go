@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"test-service/internal/config"
-	"test-service/internal/delivery/http"
+	httpDelivery "test-service/internal/delivery/http"
 	"test-service/internal/repository"
 	"test-service/internal/usecase"
 	"test-service/pkg/database"
@@ -13,28 +13,26 @@ import (
 )
 
 func main() {
-	// Load config
 	cfg := config.LoadConfig()
 
-	// Initialize logger
 	logr := logger.NewLogger()
 
-	// Connect database
 	db, err := database.NewTiDBConnection(cfg)
 	if err != nil {
 		log.Fatalf("failed to connect db: %v", err)
 	}
 	defer db.Close()
 
-	// Init layer dependencies
 	userRepo := repository.NewUserRepository(db)
 	userUsecase := usecase.NewUserUsecase(userRepo, logr)
-	userHandler := http.NewUserHandler(userUsecase)
+	userHandler := httpDelivery.NewUserHandler(userUsecase)
 
-	// Setup router
-	r := gin.Default()
+	r := gin.New()
 
-	http.RegisterUserRoutes(r, userHandler)
+	// access.log middleware
+	r.Use(logger.GinAccessLogger(logr))
+
+	httpDelivery.RegisterUserRoutes(r, userHandler)
 
 	logr.Infof("Starting user-service on port %s 🚀", cfg.AppPort)
 	if err := r.Run(":" + cfg.AppPort); err != nil {

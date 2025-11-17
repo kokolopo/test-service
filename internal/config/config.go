@@ -18,6 +18,16 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
+	// Hanya memuat .env jika kita tidak berada di lingkungan Docker/Production
+	// Jika godotenv.Load() gagal, kita berasumsi variabel sudah dimuat oleh Docker/K8s.
+	if os.Getenv("APP_ENV") != "production" {
+		err := godotenv.Load()
+		if err != nil {
+			// Ini akan log warning, tetapi tidak fatal jika sudah di Docker Compose
+			log.Println("Warning: Could not load .env file. Relying on existing environment variables.")
+		}
+	}
+
 	cfg := &Config{
 		AppPort:    getEnv("APP_PORT", "8080"),
 		DBHost:     getEnv("DB_HOST", "localhost"),
@@ -32,12 +42,8 @@ func LoadConfig() *Config {
 	return cfg
 }
 
+// 🚀 getEnv yang diperbaiki: HANYA mengambil variabel, tanpa mencoba memuat .env
 func getEnv(key, fallback string) string {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
 	if value, ok := os.LookupEnv(key); ok {
 		return value
 	}
